@@ -23,16 +23,27 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8 black bandit safety
 
-    - name: Lint with flake8
+    - name: Run isort
+      run: |
+        isort . --check-only --diff
+
+    - name: Run black
+      run: |
+        black . --check --diff
+
+    - name: Run mypy
+      run: |
+        mypy app tests
+
+    - name: Run pylint
+      run: |
+        pylint app tests
+
+    - name: Run flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Check format with black
-      run: |
-        black . --check --diff
 
     - name: Security check with bandit
       run: |
