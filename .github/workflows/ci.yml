@@ -23,6 +23,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install -e .  # インストール時のエラーを防ぐため、開発モードでインストール
 
     - name: Run isort
       run: |
