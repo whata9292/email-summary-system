@@ -1,18 +1,18 @@
 """Gmail service for email fetching and processing."""
-import os
 import base64
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
-from email.mime.text import MIMEText
+import os
 import pickle
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
 
 logger = logging.getLogger(__name__)
+
 
 class GmailService:
     """Service class for Gmail API interactions."""
