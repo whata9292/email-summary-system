@@ -1,4 +1,5 @@
 """Error handling utilities."""
+
 import functools
 import logging
 from typing import Awaitable, Callable, ParamSpec, TypeVar

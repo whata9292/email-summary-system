@@ -1,4 +1,5 @@
 """Gmail service for email fetching and processing."""
+
 import base64
 import logging
 import os
