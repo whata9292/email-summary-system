@@ -23,7 +23,7 @@ class GmailService:
         """Initialize Gmail service with credentials."""
         self.service = self._get_gmail_service()
 
-    def _get_gmail_service(self):
+    def _get_gmail_service(self) -> any:
         """Get Gmail API service instance."""
         creds = None
         token_path = "token.pickle"
@@ -105,7 +105,7 @@ class GmailService:
             logger.error(f"Error fetching emails: {str(e)}")
             raise
 
-    def _parse_email(self, email_data: Dict) -> Dict:
+    def _parse_email(self, email_data: Dict[str, any]) -> Dict[str, any]:
         """
         Parse raw email data into a structured format.
 
@@ -148,7 +148,7 @@ class GmailService:
             "labels": email_data["labelIds"],
         }
 
-    def _get_email_body(self, payload: Dict) -> str:
+    def _get_email_body(self, payload: Dict[str, any]) -> str:
         """
         Extract email body from payload.
 

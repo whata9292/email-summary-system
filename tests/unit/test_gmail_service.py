@@ -10,7 +10,7 @@ from app.services.gmail_service import GmailService
 
 
 @pytest.fixture
-def mock_credentials():
+def mock_credentials() -> Mock:
     """Mock Gmail credentials."""
     creds = Mock()
     creds.expired = False
@@ -18,7 +18,7 @@ def mock_credentials():
 
 
 @pytest.fixture
-def mock_gmail_service():
+def mock_gmail_service() -> Mock:
     """Mock Gmail API service."""
     service = Mock()
     service.users().messages().list().execute.return_value = {
@@ -31,7 +31,7 @@ def mock_gmail_service():
 
 
 @pytest.fixture
-def sample_email_data():
+def sample_email_data() -> dict:
     """Sample email data for testing."""
     return {
         "id": "123",

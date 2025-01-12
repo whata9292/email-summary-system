@@ -16,7 +16,7 @@ class NotionService:
         self.logger = logger
 
     @handle_errors(logger)
-    async def save_summary(self, email_data: EmailData, summary: str):
+    async def save_summary(self, email_data: EmailData, summary: str) -> None:
         """
         メール情報とサマリーをNotionデータベースに保存する
         """

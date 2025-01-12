@@ -29,7 +29,7 @@ class ClaudeService:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            return response.content
+            return response.content[0].text
         except Exception as e:
             self.logger.error(f"Error generating summary: {str(e)}")
             raise

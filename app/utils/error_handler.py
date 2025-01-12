@@ -6,15 +6,15 @@ from typing import Callable
 from app.config import settings
 
 
-def handle_errors(logger: logging.Logger):
+def handle_errors(logger: logging.Logger) -> Callable:
     """
     エラーハンドリングを行うデコレータ
     リトライ処理も含む
     """
 
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> any:
             retries = 0
             while retries < settings.MAX_RETRIES:
                 try:
