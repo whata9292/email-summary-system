@@ -1,9 +1,9 @@
 """Gmail service for email operations."""
 
 import base64
+import json
 import logging
 import os.path
-import pickle
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, cast
 
@@ -17,6 +17,8 @@ from app.utils.error_handler import handle_errors
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+TOKEN_FILE = "token.json"
+CREDENTIALS_FILE = "credentials.json"
 
 
 class GmailService:
@@ -27,34 +29,79 @@ class GmailService:
         self.creds = self._get_credentials()
         self._service: Resource = build("gmail", "v1", credentials=self.creds)
 
+    def _save_credentials(self, creds: Credentials) -> None:
+        """Save credentials to a JSON file.
+
+        Args:
+            creds: The credentials to save
+        """
+        creds_data = {
+            "token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": creds.scopes,
+        }
+        with open(TOKEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(creds_data, f)
+
+    def _load_credentials(self) -> Optional[Credentials]:
+        """Load credentials from JSON file.
+
+        Returns:
+            Credentials object if successful, None otherwise
+        """
+        try:
+            if not os.path.exists(TOKEN_FILE):
+                return None
+
+            with open(TOKEN_FILE, "r", encoding="utf-8") as f:
+                creds_data = json.load(f)
+
+            return Credentials(
+                token=creds_data["token"],
+                refresh_token=creds_data["refresh_token"],
+                token_uri=creds_data["token_uri"],
+                client_id=creds_data["client_id"],
+                client_secret=creds_data["client_secret"],
+                scopes=creds_data["scopes"],
+            )
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            logger.error("Failed to load credentials: %s", str(e))
+            return None
+
     def _get_credentials(self) -> Credentials:
         """
         Get or refresh Gmail API credentials.
 
         Returns:
             Valid credentials for Gmail API access
+
+        Raises:
+            ValueError: If valid credentials cannot be obtained
         """
-        creds = None
-        if os.path.exists("token.pickle"):
-            with open("token.pickle", "rb") as token:
-                creds = pickle.load(token)
+        creds = self._load_credentials()
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow_instance = flow.InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", SCOPES
-                )
-                creds = flow_instance.run_local_server(port=0)
+        try:
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow_instance = flow.InstalledAppFlow.from_client_secrets_file(
+                        CREDENTIALS_FILE, SCOPES
+                    )
+                    creds = flow_instance.run_local_server(port=0)
 
-            with open("token.pickle", "wb") as token:
-                pickle.dump(creds, token)
+                if not isinstance(creds, Credentials):
+                    raise ValueError("Failed to obtain valid credentials")
 
-        if not isinstance(creds, Credentials):
-            raise ValueError("Failed to obtain valid credentials")
+                self._save_credentials(creds)
 
-        return creds
+            return creds
+        except Exception as e:
+            logger.error("Error obtaining credentials: %s", str(e))
+            raise ValueError("Failed to obtain valid credentials") from e
 
     @handle_errors
     async def fetch_recent_emails(
@@ -73,6 +120,9 @@ class GmailService:
 
         Returns:
             List of processed email data
+
+        Raises:
+            Exception: If there's an error fetching emails
         """
         try:
             query = (
