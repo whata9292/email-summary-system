@@ -1,7 +1,6 @@
 """Unit tests for Gmail Service."""
 
-import pickle
-from datetime import datetime
+from typing import Any, Dict
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -9,7 +8,7 @@ import pytest
 from app.services.gmail_service import GmailService
 
 
-@pytest.fixture
+@pytest.fixture(name="mock_credentials")
 def mock_credentials() -> Mock:
     """Mock Gmail credentials."""
     creds = Mock()
@@ -17,7 +16,7 @@ def mock_credentials() -> Mock:
     return creds
 
 
-@pytest.fixture
+@pytest.fixture(name="mock_gmail_service")
 def mock_gmail_service() -> Mock:
     """Mock Gmail API service."""
     service = Mock()
@@ -30,8 +29,8 @@ def mock_gmail_service() -> Mock:
     return service
 
 
-@pytest.fixture
-def sample_email_data() -> dict:
+@pytest.fixture(name="sample_email_data")
+def sample_email_data() -> Dict[str, Any]:
     """Sample email data for testing."""
     return {
         "id": "123",
@@ -53,9 +52,11 @@ def sample_email_data() -> dict:
 class TestGmailService:
     """Test cases for GmailService class."""
 
+    service: GmailService
+
     @pytest.fixture(autouse=True)
-    def setup(self, mock_credentials, mock_gmail_service):
-        """Setup test cases."""
+    def setup(self, mock_credentials: Mock, mock_gmail_service: Mock) -> None:
+        """Set up test environment."""
         with (
             patch("pickle.load", return_value=mock_credentials),
             patch("os.path.exists", return_value=True),
@@ -66,8 +67,8 @@ class TestGmailService:
 
     @pytest.mark.asyncio
     async def test_fetch_recent_emails_success(
-        self, mock_gmail_service, sample_email_data
-    ):
+        self, mock_gmail_service: Mock, sample_email_data: Dict[str, Any]
+    ) -> None:
         """Test successful email fetching."""
         # Mock the get() method for individual email fetching
         mock_gmail_service.users().messages().get().execute.return_value = (
@@ -88,36 +89,38 @@ class TestGmailService:
         assert mock_gmail_service.users().messages().get.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_fetch_recent_emails_no_results(self, mock_gmail_service):
-        """Test when no emails are found."""
+    async def test_fetch_recent_emails_no_results(
+        self, mock_gmail_service: Mock
+    ) -> None:
+        """Test behavior when no emails are found."""
         # Mock empty results
         mock_gmail_service.users().messages().list().execute.return_value = {}
 
-        # Test email fetching
-        emails = await self.service.fetch_recent_emails()
+        # Test email fetching with no results
+        result = await self.service.fetch_recent_emails()
 
         # Verify results
-        assert len(emails) == 0
+        assert len(result) == 0
         mock_gmail_service.users().messages().get.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_fetch_recent_emails_with_labels(
-        self, mock_gmail_service, sample_email_data
-    ):
-        """Test email fetching with specific labels."""
+        self, mock_gmail_service: Mock, sample_email_data: Dict[str, Any]
+    ) -> None:
+        """Test email fetching with label filtering."""
         mock_gmail_service.users().messages().get().execute.return_value = (
             sample_email_data
         )
 
         # Test email fetching with labels
-        emails = await self.service.fetch_recent_emails(label_ids=["INBOX", "UNREAD"])
+        await self.service.fetch_recent_emails(label_ids=["INBOX", "UNREAD"])
 
         # Verify label parameter was passed
         list_call_kwargs = mock_gmail_service.users().messages().list.call_args[1]
         assert "labelIds" in list_call_kwargs
         assert list_call_kwargs["labelIds"] == ["INBOX", "UNREAD"]
 
-    def test_parse_email(self, sample_email_data):
+    def test_parse_email(self, sample_email_data: Dict[str, Any]) -> None:
         """Test email parsing functionality."""
         parsed_email = self.service._parse_email(sample_email_data)
 
@@ -129,8 +132,10 @@ class TestGmailService:
         assert parsed_email["body"] == "Test email body"
 
     @pytest.mark.asyncio
-    async def test_fetch_recent_emails_api_error(self, mock_gmail_service):
-        """Test handling of API errors."""
+    async def test_fetch_recent_emails_api_error(
+        self, mock_gmail_service: Mock
+    ) -> None:
+        """Test error handling during API calls."""
         # Mock API error
         mock_gmail_service.users().messages().list().execute.side_effect = Exception(
             "API Error"
@@ -142,8 +147,8 @@ class TestGmailService:
 
         assert str(exc_info.value) == "API Error"
 
-    def test_get_email_body_with_parts(self):
-        """Test email body extraction from multipart email."""
+    def test_get_email_body_with_parts(self) -> None:
+        """Test email body extraction from multipart emails."""
         payload = {
             "parts": [
                 {
@@ -155,8 +160,8 @@ class TestGmailService:
         body = self.service._get_email_body(payload)
         assert body == "Test email body"
 
-    def test_get_email_body_simple(self):
-        """Test email body extraction from simple email."""
+    def test_get_email_body_simple(self) -> None:
+        """Test email body extraction from simple emails."""
         payload = {"body": {"data": "VGVzdCBlbWFpbCBib2R5"}}  # "Test email body"
         body = self.service._get_email_body(payload)
         assert body == "Test email body"

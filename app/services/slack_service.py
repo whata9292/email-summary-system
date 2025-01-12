@@ -1,33 +1,40 @@
-from slack_sdk.errors import SlackApiError
-from slack_sdk.web.async_client import AsyncWebClient
+"""Slack notification service."""
+import logging
+from typing import Any, Dict
+
+from slack_sdk.web import WebClient
 
 from app.utils.error_handler import handle_errors
-from app.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class SlackService:
-    def __init__(self, token: str, channel_id: str):
-        self.client = AsyncWebClient(token=token)
+    """Service for sending notifications to Slack."""
+
+    def __init__(self, api_token: str, channel_id: str) -> None:
+        """
+        Initialize Slack service.
+
+        Args:
+            api_token: Slack API token
+            channel_id: Target Slack channel ID
+        """
+        self.client = WebClient(token=api_token)
         self.channel_id = channel_id
-        self.logger = logger
 
-    @handle_errors(logger)
-    async def send_notification(
-        self, subject: str, summary: str, link: str | None = None
-    ) -> None:
+    @handle_errors
+    async def send_notification(self, message: str) -> Dict[str, Any]:
         """
-        Slackにサマリーを通知する
-        """
-        try:
-            message = f"*新着メール*\n>件名: {subject}\n>サマリー: {summary}"
-            if link:
-                message += f"\n>リンク: {link}"
+        Send a notification to the configured Slack channel.
 
-            await self.client.chat_postMessage(
-                channel=self.channel_id, text=message, unfurl_links=False
-            )
-        except SlackApiError as e:
-            self.logger.error(f"Error sending Slack notification: {str(e)}")
-            raise
+        Args:
+            message: The message to send
+
+        Returns:
+            Slack API response
+        """
+        response = await self.client.chat_postMessage(
+            channel=self.channel_id, text=message
+        )
+        return response

@@ -1,35 +1,49 @@
-from anthropic import AsyncAnthropic
+"""Service for interfacing with Claude API."""
+import logging
+
+from anthropic import Anthropic, Message
 
 from app.utils.error_handler import handle_errors
-from app.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ClaudeService:
-    def __init__(self, api_key: str):
-        self.client = AsyncAnthropic(api_key=api_key)
-        self.logger = logger
+    """Service for generating summaries using Claude API."""
 
-    @handle_errors(logger)
-    async def generate_summary(self, email_content: str, max_length: int = 500) -> str:
+    def __init__(self, api_token: str) -> None:
         """
-        メール本文からサマリーを生成する
+        Initialize Claude service.
+
+        Args:
+            api_token: Claude API token
         """
-        try:
-            prompt = f"""
-            以下のメール本文から重要なポイントを抽出し、{max_length}文字以内で要約してください：
+        self.client = Anthropic(api_key=api_token)
 
-            {email_content}
-            """
+    @handle_errors
+    async def generate_summary(self, text: str) -> str:
+        """
+        Generate a summary of the provided text.
 
-            response = await self.client.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}],
-            )
+        Args:
+            text: Text to summarize
 
-            return response.content[0].text
-        except Exception as e:
-            self.logger.error(f"Error generating summary: {str(e)}")
-            raise
+        Returns:
+            Generated summary text
+        """
+        prompt = (
+            "Please provide a concise summary of the following email. "
+            "Focus on key points and action items if any:\n\n"
+            f"{text}"
+        )
+
+        message: Message = await self.client.messages.create(
+            max_tokens=1024,
+            model="claude-3-sonnet-20240229",
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        if message.content and len(message.content) > 0:
+            return message.content[0].text
+
+        return "No summary generated"

@@ -1,15 +1,14 @@
 """Gmail service for email fetching and processing."""
-
 import base64
 import logging
 import os
 import pickle
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+from googleapiclient.discovery import Resource, build
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +18,11 @@ class GmailService:
 
     SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Gmail service with credentials."""
-        self.service = self._get_gmail_service()
+        self.service: Resource = self._get_gmail_service()
 
-    def _get_gmail_service(self) -> any:
+    def _get_gmail_service(self) -> Resource:
         """Get Gmail API service instance."""
         creds = None
         token_path = "token.pickle"
@@ -55,7 +54,7 @@ class GmailService:
         hours: int = 24,
         max_results: int = 100,
         label_ids: Optional[List[str]] = None,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Fetch recent emails from Gmail.
 
@@ -73,7 +72,11 @@ class GmailService:
             query = f'after:{time_range.strftime("%Y/%m/%d")}'
 
             # Prepare request parameters
-            params = {"userId": "me", "q": query, "maxResults": max_results}
+            params: Dict[str, Any] = {
+                "userId": "me",
+                "q": query,
+                "maxResults": max_results,
+            }
             if label_ids:
                 params["labelIds"] = label_ids
 
@@ -105,7 +108,7 @@ class GmailService:
             logger.error(f"Error fetching emails: {str(e)}")
             raise
 
-    def _parse_email(self, email_data: Dict[str, any]) -> Dict[str, any]:
+    def _parse_email(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Parse raw email data into a structured format.
 
@@ -148,7 +151,7 @@ class GmailService:
             "labels": email_data["labelIds"],
         }
 
-    def _get_email_body(self, payload: Dict[str, any]) -> str:
+    def _get_email_body(self, payload: Dict[str, Any]) -> str:
         """
         Extract email body from payload.
 

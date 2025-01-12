@@ -1,74 +1,130 @@
-import asyncio
-import os
+"""Main application module."""
 
-from app.config import settings
+import asyncio
+import logging
+from typing import Tuple
+
+from app.config import Settings
 from app.services.claude_service import ClaudeService
 from app.services.gmail_service import GmailService
 from app.services.notion_service import NotionService
 from app.services.slack_service import SlackService
-from app.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
+settings = Settings()
 
 
-class EmailSummarySystem:
-    def __init__(self):
-        self.gmail_service = GmailService(os.getenv("GMAIL_API_KEY"))
-        self.claude_service = ClaudeService(os.getenv("ANTHROPIC_API_KEY"))
-        self.notion_service = NotionService(
-            os.getenv("NOTION_API_KEY"), os.getenv("NOTION_DATABASE_ID")
+def initialize_services() -> (
+    Tuple[GmailService, ClaudeService, NotionService, SlackService]
+):
+    """
+    Initialize and return service instances.
+
+    Returns:
+        Tuple containing initialized service instances for Gmail, Claude, Notion, and Slack.
+    """
+    if not settings.claude_api_key:
+        raise ValueError("CLAUDE_API_KEY is required")
+    if not settings.notion_api_key or not settings.notion_database_id:
+        raise ValueError("NOTION_API_KEY and NOTION_DATABASE_ID are required")
+    if not settings.slack_bot_token or not settings.slack_channel_id:
+        raise ValueError("SLACK_BOT_TOKEN and SLACK_CHANNEL_ID are required")
+
+    gmail_service = GmailService()
+    claude_service = ClaudeService(api_token=settings.claude_api_key)
+    notion_service = NotionService(
+        api_token=settings.notion_api_key, database_id=settings.notion_database_id
+    )
+    slack_service = SlackService(
+        api_token=settings.slack_bot_token, channel_id=settings.slack_channel_id
+    )
+
+    return gmail_service, claude_service, notion_service, slack_service
+
+
+async def process_emails() -> None:
+    """
+    Process emails through the email summary pipeline.
+
+    1. Fetch recent emails
+    2. Generate summaries using Claude
+    3. Store in Notion
+    4. Send notifications to Slack
+    """
+    try:
+        (
+            gmail_service,
+            claude_service,
+            notion_service,
+            slack_service,
+        ) = initialize_services()
+
+        # Fetch recent emails
+        emails = await gmail_service.fetch_recent_emails(
+            hours=settings.email_lookup_hours,
+            max_results=settings.max_emails_to_process,
         )
-        self.slack_service = SlackService(
-            os.getenv("SLACK_BOT_TOKEN"), os.getenv("SLACK_CHANNEL_ID")
-        )
 
-    async def process_emails(self):
-        """
-        メールの取得、サマリー生成、保存、通知を行う
-        """
-        try:
-            # メールの取得
-            emails = await self.gmail_service.fetch_emails(
-                max_results=settings.EMAIL_MAX_RESULTS
+        if not emails:
+            logger.info("No new emails to process")
+            return
+
+        logger.info(f"Processing {len(emails)} emails")
+
+        for email in emails:
+            # Generate summary
+            summary = await claude_service.generate_summary(email["body"])
+
+            # Store in Notion
+            notion_page = await notion_service.add_entry(
+                {
+                    "email_id": email["id"],
+                    "subject": email["subject"],
+                    "sender": email["sender"],
+                    "date": email["date"],
+                    "summary": summary,
+                }
             )
 
-            for email in emails:
-                # サマリーの生成
-                summary = await self.claude_service.generate_summary(
-                    email.content, max_length=settings.SUMMARY_MAX_LENGTH
-                )
+            # Send Slack notification
+            await slack_service.send_notification(
+                f"New email summary created:\n"
+                f"From: {email['sender']}\n"
+                f"Subject: {email['subject']}\n"
+                f"Summary: {summary}\n"
+                f"Notion link: {notion_page['url'] if notion_page else 'N/A'}"
+            )
 
-                # Notionへの保存
-                await self.notion_service.save_summary(email, summary)
+    except Exception as e:
+        logger.error(f"Error processing emails: {str(e)}")
+        raise
 
-                # Slack通知
-                await self.slack_service.send_notification(
-                    subject=email.subject, summary=summary
-                )
 
-                logger.info(f"Processed email: {email.subject}")
-
+async def scheduled_execution() -> None:
+    """Execute the email processing task on a scheduled interval."""
+    while True:
+        try:
+            await process_emails()
         except Exception as e:
-            logger.error(f"Error in process_emails: {str(e)}")
-            raise
+            logger.error(f"Error in scheduled execution: {str(e)}")
 
-    async def run(self):
-        """
-        定期的にメール処理を実行する
-        """
-        while True:
-            try:
-                await self.process_emails()
-                await asyncio.sleep(settings.EMAIL_FETCH_INTERVAL)
-            except Exception as e:
-                logger.error(f"Error in run: {str(e)}")
-                await asyncio.sleep(60)  # エラー時は1分待機
+        await asyncio.sleep(settings.processing_interval_seconds)
 
 
-async def main():
-    app = EmailSummarySystem()
-    await app.run()
+def main() -> None:
+    """Start the email summary application."""
+    try:
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
 
+        # Start scheduled execution
+        asyncio.run(scheduled_execution())
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Application stopped by user")
+    except Exception as e:
+        logger.error(f"Application error: {str(e)}")
+        raise

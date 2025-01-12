@@ -1,36 +1,47 @@
-from datetime import datetime
+"""Notion integration service."""
+import logging
+from typing import Any, Dict
 
 from notion_client import AsyncClient
 
-from app.models.email import EmailData
 from app.utils.error_handler import handle_errors
-from app.utils.logger import setup_logger
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class NotionService:
-    def __init__(self, token: str, database_id: str):
-        self.client = AsyncClient(auth=token)
-        self.database_id = database_id
-        self.logger = logger
+    """Service for interacting with Notion API."""
 
-    @handle_errors(logger)
-    async def save_summary(self, email_data: EmailData, summary: str) -> None:
+    def __init__(self, api_token: str, database_id: str) -> None:
         """
-        メール情報とサマリーをNotionデータベースに保存する
+        Initialize Notion service.
+
+        Args:
+            api_token: Notion API token
+            database_id: Target Notion database ID
         """
-        try:
-            await self.client.pages.create(
-                parent={"database_id": self.database_id},
-                properties={
-                    "Title": {"title": [{"text": {"content": email_data.subject}}]},
-                    "From": {"rich_text": [{"text": {"content": email_data.sender}}]},
-                    "Received": {"date": {"start": email_data.received_at.isoformat()}},
-                    "Summary": {"rich_text": [{"text": {"content": summary}}]},
-                    "Status": {"select": {"name": "Processed"}},
-                },
-            )
-        except Exception as e:
-            self.logger.error(f"Error saving to Notion: {str(e)}")
-            raise
+        self.client = AsyncClient(auth=api_token)
+        self.database_id = database_id
+
+    @handle_errors
+    async def add_entry(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Add a new entry to the Notion database.
+
+        Args:
+            data: Entry data containing email_id, subject, sender, date, and summary
+
+        Returns:
+            Created Notion page data
+        """
+        page = await self.client.pages.create(
+            parent={"database_id": self.database_id},
+            properties={
+                "Email ID": {"title": [{"text": {"content": data["email_id"]}}]},
+                "Subject": {"rich_text": [{"text": {"content": data["subject"]}}]},
+                "Sender": {"rich_text": [{"text": {"content": data["sender"]}}]},
+                "Date": {"date": {"start": data["date"]}},
+                "Summary": {"rich_text": [{"text": {"content": data["summary"]}}]},
+            },
+        )
+        return page
