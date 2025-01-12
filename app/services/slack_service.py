@@ -14,7 +14,9 @@ class SlackService:
         self.logger = logger
 
     @handle_errors(logger)
-    async def send_notification(self, subject: str, summary: str, link: str | None = None) -> None:
+    async def send_notification(
+        self, subject: str, summary: str, link: str | None = None
+    ) -> None:
         """
         Slackにサマリーを通知する
         """
