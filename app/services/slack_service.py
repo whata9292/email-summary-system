@@ -1,9 +1,8 @@
 """Slack notification service."""
-
 import logging
 from typing import Any, Dict
 
-from slack_sdk.web import WebClient
+from slack_sdk.web.async_client import AsyncWebClient
 
 from app.utils.error_handler import handle_errors
 
@@ -21,7 +20,7 @@ class SlackService:
             api_token: Slack API token
             channel_id: Target Slack channel ID
         """
-        self.client = WebClient(token=api_token)
+        self.client = AsyncWebClient(token=api_token)
         self.channel_id = channel_id
 
     @handle_errors
@@ -38,4 +37,6 @@ class SlackService:
         response = await self.client.chat_postMessage(
             channel=self.channel_id, text=message
         )
-        return response
+        if isinstance(response.data, dict):
+            return dict(response.data)
+        return {"status": "sent", "raw_response": str(response.data)}

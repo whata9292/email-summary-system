@@ -1,8 +1,8 @@
 """Service for interfacing with Claude API."""
-
 import logging
 
-from anthropic import Anthropic, Message
+from anthropic import Anthropic
+from anthropic.types import Message
 
 from app.utils.error_handler import handle_errors
 
@@ -38,13 +38,15 @@ class ClaudeService:
             f"{text}"
         )
 
-        message: Message = await self.client.messages.create(
+        message: Message = self.client.messages.create(
             max_tokens=1024,
             model="claude-3-sonnet-20240229",
             messages=[{"role": "user", "content": prompt}],
         )
 
         if message.content and len(message.content) > 0:
-            return message.content[0].text
+            content = message.content[0]
+            if hasattr(content, "text"):
+                return content.text
 
         return "No summary generated"
