@@ -8,6 +8,7 @@ from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class NotionService:
     def __init__(self, token: str, database_id: str):
         self.client = AsyncClient(auth=token)
@@ -27,8 +28,8 @@ class NotionService:
                     "From": {"rich_text": [{"text": {"content": email_data.sender}}]},
                     "Received": {"date": {"start": email_data.received_at.isoformat()}},
                     "Summary": {"rich_text": [{"text": {"content": summary}}]},
-                    "Status": {"select": {"name": "Processed"}}
-                }
+                    "Status": {"select": {"name": "Processed"}},
+                },
             )
         except Exception as e:
             self.logger.error(f"Error saving to Notion: {str(e)}")

@@ -6,6 +6,7 @@ from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class SlackService:
     def __init__(self, token: str, channel_id: str):
         self.client = AsyncWebClient(token=token)
@@ -23,9 +24,7 @@ class SlackService:
                 message += f"\n>リンク: {link}"
 
             await self.client.chat_postMessage(
-                channel=self.channel_id,
-                text=message,
-                unfurl_links=False
+                channel=self.channel_id, text=message, unfurl_links=False
             )
         except SlackApiError as e:
             self.logger.error(f"Error sending Slack notification: {str(e)}")

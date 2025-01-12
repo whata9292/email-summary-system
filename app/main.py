@@ -10,17 +10,16 @@ from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class EmailSummarySystem:
     def __init__(self):
         self.gmail_service = GmailService(os.getenv("GMAIL_API_KEY"))
         self.claude_service = ClaudeService(os.getenv("ANTHROPIC_API_KEY"))
         self.notion_service = NotionService(
-            os.getenv("NOTION_API_KEY"),
-            os.getenv("NOTION_DATABASE_ID")
+            os.getenv("NOTION_API_KEY"), os.getenv("NOTION_DATABASE_ID")
         )
         self.slack_service = SlackService(
-            os.getenv("SLACK_BOT_TOKEN"),
-            os.getenv("SLACK_CHANNEL_ID")
+            os.getenv("SLACK_BOT_TOKEN"), os.getenv("SLACK_CHANNEL_ID")
         )
 
     async def process_emails(self):
@@ -32,23 +31,21 @@ class EmailSummarySystem:
             emails = await self.gmail_service.fetch_emails(
                 max_results=settings.EMAIL_MAX_RESULTS
             )
-            
+
             for email in emails:
                 # サマリーの生成
                 summary = await self.claude_service.generate_summary(
-                    email.content,
-                    max_length=settings.SUMMARY_MAX_LENGTH
+                    email.content, max_length=settings.SUMMARY_MAX_LENGTH
                 )
-                
+
                 # Notionへの保存
                 await self.notion_service.save_summary(email, summary)
-                
+
                 # Slack通知
                 await self.slack_service.send_notification(
-                    subject=email.subject,
-                    summary=summary
+                    subject=email.subject, summary=summary
                 )
-                
+
                 logger.info(f"Processed email: {email.subject}")
 
         except Exception as e:
@@ -67,9 +64,11 @@ class EmailSummarySystem:
                 logger.error(f"Error in run: {str(e)}")
                 await asyncio.sleep(60)  # エラー時は1分待機
 
+
 async def main():
     app = EmailSummarySystem()
     await app.run()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

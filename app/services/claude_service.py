@@ -5,6 +5,7 @@ from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class ClaudeService:
     def __init__(self, api_key: str):
         self.client = AsyncAnthropic(api_key=api_key)
@@ -25,9 +26,9 @@ class ClaudeService:
             response = await self.client.messages.create(
                 model="claude-3-sonnet-20240229",
                 max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
-            
+
             return response.content
         except Exception as e:
             self.logger.error(f"Error generating summary: {str(e)}")
