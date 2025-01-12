@@ -69,7 +69,7 @@ async def process_emails() -> None:
             logger.info("No new emails to process")
             return
 
-        logger.info(f"Processing {len(emails)} emails")
+        logger.info("Processing %d emails", len(emails))
 
         for email in emails:
             # Generate summary
@@ -96,7 +96,7 @@ async def process_emails() -> None:
             )
 
     except Exception as e:
-        logger.error(f"Error processing emails: {str(e)}")
+        logger.error("Error processing emails: %s", str(e))
         raise
 
 
@@ -106,7 +106,7 @@ async def scheduled_execution() -> None:
         try:
             await process_emails()
         except Exception as e:
-            logger.error(f"Error in scheduled execution: {str(e)}")
+            logger.error("Error in scheduled execution: %s", str(e))
 
         await asyncio.sleep(settings.processing_interval_seconds)
 
@@ -126,5 +126,5 @@ def main() -> None:
     except KeyboardInterrupt:
         logger.info("Application stopped by user")
     except Exception as e:
-        logger.error(f"Application error: {str(e)}")
+        logger.error("Application error: %s", str(e))
         raise

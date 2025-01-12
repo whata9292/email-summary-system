@@ -120,9 +120,9 @@ class TestGmailService:
         assert "labelIds" in list_call_kwargs
         assert list_call_kwargs["labelIds"] == ["INBOX", "UNREAD"]
 
-    def test_parse_email(self, sample_email_data: Dict[str, Any]) -> None:
+    def test_parse_payload_data(self, sample_email_data: Dict[str, Any]) -> None:
         """Test email parsing functionality."""
-        parsed_email = self.service._parse_email(sample_email_data)
+        parsed_email = self.service.parse_email(sample_email_data)
 
         assert parsed_email["id"] == "123"
         assert parsed_email["thread_id"] == "thread123"
@@ -147,7 +147,7 @@ class TestGmailService:
 
         assert str(exc_info.value) == "API Error"
 
-    def test_get_email_body_with_parts(self) -> None:
+    def test_get_payload_body_with_parts(self) -> None:
         """Test email body extraction from multipart emails."""
         payload = {
             "parts": [
@@ -157,11 +157,11 @@ class TestGmailService:
                 }
             ]
         }
-        body = self.service._get_email_body(payload)
+        body = self.service.parse_email_body(payload)
         assert body == "Test email body"
 
-    def test_get_email_body_simple(self) -> None:
+    def test_get_payload_body_simple(self) -> None:
         """Test email body extraction from simple emails."""
         payload = {"body": {"data": "VGVzdCBlbWFpbCBib2R5"}}  # "Test email body"
-        body = self.service._get_email_body(payload)
+        body = self.service.parse_email_body(payload)
         assert body == "Test email body"

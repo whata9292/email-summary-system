@@ -26,7 +26,7 @@ def handle_errors(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            logger.error(f"Error in {func.__name__}: {str(e)}")
+            logger.error("Error in %s: %s", func.__name__, str(e))
             raise
 
     return wrapper

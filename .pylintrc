@@ -5,11 +5,10 @@ persistent=yes
 load-plugins=
 
 [MESSAGES CONTROL]
-disable=C0111,C0103,C0303,W0511,R0903,C0301,C0302,R0902,R0913,R0904,C0413,W0612,W0611,R0914,R0912,R0915,R0911,R0201,W0703,C0200,W0621,W0622,W0702,C0209
+disable=C0111,C0103,C0303,W0511,R0903,C0301,C0302,R0902,R0913,R0904,C0413,W0612,W0611,R0914,R0912,R0915,R0911,W0703,C0200,W0621,W0622,W0702,C0209
 
 [REPORTS]
 output-format=text
-files-output=no
 reports=no
 evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
 
@@ -47,6 +46,7 @@ ignore-imports=no
 ignore-mixin-members=yes
 ignored-classes=SQLObject
 unsafe-load-any-extension=yes
+ignored-modules=google_auth_oauthlib
 
 [VARIABLES]
 init-import=no
@@ -77,4 +77,4 @@ ext-import-graph=
 int-import-graph=
 
 [EXCEPTIONS]
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception
