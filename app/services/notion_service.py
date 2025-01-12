@@ -1,8 +1,10 @@
-from notion_client import AsyncClient
-from app.models.email import EmailData
-from app.utils.logger import setup_logger
-from app.utils.error_handler import handle_errors
 from datetime import datetime
+
+from notion_client import AsyncClient
+
+from app.models.email import EmailData
+from app.utils.error_handler import handle_errors
+from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 

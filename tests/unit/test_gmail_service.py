@@ -1,8 +1,10 @@
 """Unit tests for Gmail Service."""
-import pytest
 import pickle
 from datetime import datetime
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
+
+import pytest
+
 from app.services.gmail_service import GmailService
 
 

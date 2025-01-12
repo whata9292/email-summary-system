@@ -1,8 +1,10 @@
-from functools import wraps
-import logging
-from typing import Callable
 import asyncio
+import logging
+from functools import wraps
+from typing import Callable
+
 from app.config import settings
+
 
 def handle_errors(logger: logging.Logger):
     """

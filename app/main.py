@@ -1,10 +1,11 @@
 import asyncio
 import os
-from app.services.gmail_service import GmailService
+
+from app.config import settings
 from app.services.claude_service import ClaudeService
+from app.services.gmail_service import GmailService
 from app.services.notion_service import NotionService
 from app.services.slack_service import SlackService
-from app.config import settings
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
