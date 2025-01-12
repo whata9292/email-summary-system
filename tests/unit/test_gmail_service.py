@@ -4,6 +4,7 @@ from typing import Any, Dict
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
+from google.oauth2.credentials import Credentials
 
 from app.services.gmail_service import GmailService
 
@@ -11,7 +12,14 @@ from app.services.gmail_service import GmailService
 @pytest.fixture(name="mock_credentials")
 def mock_credentials() -> Mock:
     """Mock Gmail credentials."""
-    creds = Mock()
+    creds = Mock(spec=Credentials)
+    creds.token = "dummy_token"
+    creds.refresh_token = "dummy_refresh_token"
+    creds.token_uri = "dummy_uri"
+    creds.client_id = "dummy_client_id"
+    creds.client_secret = "dummy_secret"
+    creds.scopes = ["https://www.googleapis.com/auth/gmail.readonly"]
+    creds.valid = True
     creds.expired = False
     return creds
 
@@ -19,13 +27,20 @@ def mock_credentials() -> Mock:
 @pytest.fixture(name="mock_gmail_service")
 def mock_gmail_service() -> Mock:
     """Mock Gmail API service."""
-    service = Mock()
-    service.users().messages().list().execute.return_value = {
+    users = Mock()
+    messages = Mock()
+    list_method = Mock()
+    list_method.execute.return_value = {
         "messages": [
             {"id": "123", "threadId": "thread123"},
             {"id": "456", "threadId": "thread456"},
         ]
     }
+    messages.list.return_value = list_method
+    messages.get.return_value.execute.return_value = {}
+    users.messages.return_value = messages
+    service = Mock()
+    service.users.return_value = users
     return service
 
 
@@ -58,12 +73,29 @@ class TestGmailService:
     def setup(self, mock_credentials: Mock, mock_gmail_service: Mock) -> None:
         """Set up test environment."""
         with (
-            patch("pickle.load", return_value=mock_credentials),
-            patch("os.path.exists", return_value=True),
-            patch("builtins.open", mock_open()),
+            patch(
+                "app.services.gmail_service.Credentials", return_value=mock_credentials
+            ),
             patch("app.services.gmail_service.build", return_value=mock_gmail_service),
+            patch("builtins.open", mock_open(read_data='{"token": "dummy_token"}')),
+            patch(
+                "json.load",
+                return_value={
+                    "token": "dummy_token",
+                    "refresh_token": "dummy_refresh_token",
+                    "token_uri": "dummy_uri",
+                    "client_id": "dummy_client_id",
+                    "client_secret": "dummy_secret",
+                    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"],
+                },
+            ),
+            patch("os.path.exists", return_value=True),
         ):
-            self.service = GmailService()
+            self.service = GmailService(
+                token_path="dummy_token.json", credentials_path="dummy_creds.json"
+            )
+            # リセットカウンター
+            mock_gmail_service.reset_mock()
 
     @pytest.mark.asyncio
     async def test_fetch_recent_emails_success(
@@ -71,9 +103,8 @@ class TestGmailService:
     ) -> None:
         """Test successful email fetching."""
         # Mock the get() method for individual email fetching
-        mock_gmail_service.users().messages().get().execute.return_value = (
-            sample_email_data
-        )
+        messages_mock = mock_gmail_service.users.return_value.messages.return_value
+        messages_mock.get.return_value.execute.return_value = sample_email_data
 
         # Test email fetching
         emails = await self.service.fetch_recent_emails(hours=24, max_results=2)
@@ -84,9 +115,9 @@ class TestGmailService:
         assert emails[0]["subject"] == "Test Email"
         assert emails[0]["sender"] == "sender@example.com"
 
-        # Verify API calls
-        mock_gmail_service.users().messages().list.assert_called_once()
-        assert mock_gmail_service.users().messages().get.call_count == 2
+        # APIの呼び出しを検証
+        messages_mock.list.assert_called_once()
+        assert messages_mock.get.call_count == 2
 
     @pytest.mark.asyncio
     async def test_fetch_recent_emails_no_results(
@@ -94,29 +125,29 @@ class TestGmailService:
     ) -> None:
         """Test behavior when no emails are found."""
         # Mock empty results
-        mock_gmail_service.users().messages().list().execute.return_value = {}
+        messages_mock = mock_gmail_service.users.return_value.messages.return_value
+        messages_mock.list.return_value.execute.return_value = {}
 
         # Test email fetching with no results
         result = await self.service.fetch_recent_emails()
 
         # Verify results
         assert len(result) == 0
-        mock_gmail_service.users().messages().get.assert_not_called()
+        messages_mock.get.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_fetch_recent_emails_with_labels(
         self, mock_gmail_service: Mock, sample_email_data: Dict[str, Any]
     ) -> None:
         """Test email fetching with label filtering."""
-        mock_gmail_service.users().messages().get().execute.return_value = (
-            sample_email_data
-        )
+        messages_mock = mock_gmail_service.users.return_value.messages.return_value
+        messages_mock.get.return_value.execute.return_value = sample_email_data
 
         # Test email fetching with labels
         await self.service.fetch_recent_emails(label_ids=["INBOX", "UNREAD"])
 
         # Verify label parameter was passed
-        list_call_kwargs = mock_gmail_service.users().messages().list.call_args[1]
+        list_call_kwargs = messages_mock.list.call_args[1]
         assert "labelIds" in list_call_kwargs
         assert list_call_kwargs["labelIds"] == ["INBOX", "UNREAD"]
 
@@ -137,9 +168,8 @@ class TestGmailService:
     ) -> None:
         """Test error handling during API calls."""
         # Mock API error
-        mock_gmail_service.users().messages().list().execute.side_effect = Exception(
-            "API Error"
-        )
+        messages_mock = mock_gmail_service.users.return_value.messages.return_value
+        messages_mock.list.return_value.execute.side_effect = Exception("API Error")
 
         # Test error handling
         with pytest.raises(Exception) as exc_info:
