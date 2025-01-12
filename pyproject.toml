@@ -1,3 +1,11 @@
+[tool.bandit]
+# テストファイルでのassertの使用を除外
+exclude_dirs = ["tests"]
+skips = ["B101"]  # assert used
+
+[tool.bandit.assert_used]
+skips = ["B101"]
+
 [tool.mypy]
 python_version = "3.11"
 disallow_untyped_defs = true

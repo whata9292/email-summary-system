@@ -40,3 +40,10 @@ repos:
         -   types-PyYAML
         -   types-setuptools
         -   types-python-dateutil
+
+-   repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+    -   id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]

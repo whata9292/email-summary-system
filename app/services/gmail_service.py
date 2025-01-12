@@ -3,6 +3,7 @@
 import base64
 import json
 import logging
+import os
 import os.path
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, cast
@@ -17,15 +18,24 @@ from app.utils.error_handler import handle_errors
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-TOKEN_FILE = "token.json"
-CREDENTIALS_FILE = "credentials.json"
+TOKEN_FILE = os.getenv("GMAIL_TOKEN_FILE", "token.json")
+CREDENTIALS_FILE = os.getenv("GMAIL_CREDENTIALS_FILE", "credentials.json")
 
 
 class GmailService:
     """Service for Gmail API operations."""
 
-    def __init__(self) -> None:
-        """Initialize Gmail service with authentication."""
+    def __init__(
+        self, token_path: Optional[str] = None, credentials_path: Optional[str] = None
+    ) -> None:
+        """Initialize Gmail service with authentication.
+
+        Args:
+            token_path: Optional custom path for token file
+            credentials_path: Optional custom path for credentials file
+        """
+        self.token_path = token_path or TOKEN_FILE
+        self.credentials_path = credentials_path or CREDENTIALS_FILE
         self.creds = self._get_credentials()
         self._service: Resource = build("gmail", "v1", credentials=self.creds)
 
@@ -43,7 +53,7 @@ class GmailService:
             "client_secret": creds.client_secret,
             "scopes": creds.scopes,
         }
-        with open(TOKEN_FILE, "w", encoding="utf-8") as f:
+        with open(self.token_path, "w", encoding="utf-8") as f:
             json.dump(creds_data, f)
 
     def _load_credentials(self) -> Optional[Credentials]:
@@ -53,10 +63,10 @@ class GmailService:
             Credentials object if successful, None otherwise
         """
         try:
-            if not os.path.exists(TOKEN_FILE):
+            if not os.path.exists(self.token_path):
                 return None
 
-            with open(TOKEN_FILE, "r", encoding="utf-8") as f:
+            with open(self.token_path, "r", encoding="utf-8") as f:
                 creds_data = json.load(f)
 
             return Credentials(
@@ -89,7 +99,7 @@ class GmailService:
                     creds.refresh(Request())
                 else:
                     flow_instance = flow.InstalledAppFlow.from_client_secrets_file(
-                        CREDENTIALS_FILE, SCOPES
+                        self.credentials_path, SCOPES
                     )
                     creds = flow_instance.run_local_server(port=0)
 
