@@ -72,27 +72,23 @@ async def process_emails() -> None:
         logger.info("Processing %d emails", len(emails))
 
         for email in emails:
-            # Generate summary
+            # メール本文のみをClaudeに渡して要約を生成
             summary = await claude_service.generate_summary(email["body"])
 
-            # Store in Notion
+            # タイトルと要約のみをNotionに保存
             notion_page = await notion_service.add_entry(
                 {
-                    "email_id": email["id"],
-                    "subject": email["subject"],
-                    "sender": email["sender"],
-                    "date": email["date"],
-                    "summary": summary,
+                    "title": email["subject"],  # メールの件名をタイトルとして使用
+                    "content": summary,         # Claudeの要約を本文として使用
                 }
             )
 
             # Send Slack notification
             await slack_service.send_notification(
-                f"New email summary created:\n"
-                f"From: {email['sender']}\n"
-                f"Subject: {email['subject']}\n"
-                f"Summary: {summary}\n"
-                f"Notion link: {notion_page['url'] if notion_page else 'N/A'}"
+                f"メール要約が作成されました\n"
+                f"件名: {email['subject']}\n"
+                f"要約: {summary}\n"
+                f"Notionリンク: {notion_page['url'] if notion_page else 'N/A'}"
             )
 
     except Exception as e:
