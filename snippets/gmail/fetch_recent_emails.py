@@ -7,8 +7,6 @@ import sys
 
 from dotenv import load_dotenv
 
-from app.services.gmail_service import GmailService
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -20,6 +18,8 @@ sys.path.append(project_root)
 
 # .envファイルの読み込み
 load_dotenv(os.path.join(project_root, ".env"))
+
+from app.services.gmail_service import GmailService  # noqa: E402
 
 
 async def fetch_emails() -> None:

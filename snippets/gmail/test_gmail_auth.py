@@ -6,19 +6,18 @@ import sys
 
 from dotenv import load_dotenv
 
-from app.services.gmail_service import GmailService
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# プロジェクトルートディレクトリをPYTHONPATHに追加
+# プロジェクトルートディレクトリをPYTHONPATHに追加とenv読み込みを先に実行
 project_root = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
 sys.path.append(project_root)
-
-# .envファイルの読み込み
 load_dotenv(os.path.join(project_root, ".env"))
+
+# 環境設定後にGmailServiceをインポート
+from app.services.gmail_service import GmailService  # noqa: E402
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def test_gmail_auth() -> GmailService:
