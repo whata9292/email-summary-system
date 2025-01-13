@@ -2,14 +2,21 @@
 
 import asyncio
 import os
+import sys
 
 from dotenv import load_dotenv
 
-from snippets.claude.advanced_prompts import process_with_template
-from snippets.claude.summarize_email import summarize_with_priorities
+# プロジェクトルートディレクトリをPYTHONPATHに追加
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+sys.path.append(project_root)
 
 # .envファイルの読み込み
 load_dotenv()
+
+from snippets.claude.advanced_prompts import process_with_template  # noqa: E402
+from snippets.claude.summarize_email import summarize_with_priorities  # noqa: E402
 
 
 def check_environment() -> None:
