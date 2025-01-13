@@ -1,4 +1,5 @@
 """Test cases for data converters."""
+
 from datetime import datetime
 
 from app.models.converters import email_to_notion_data

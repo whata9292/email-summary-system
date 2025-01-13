@@ -1,4 +1,5 @@
 """Test cases for Notion service."""
+
 from unittest.mock import AsyncMock
 
 import pytest

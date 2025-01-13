@@ -1,4 +1,5 @@
 """Data conversion utilities."""
+
 from typing import Any, Dict
 
 from app.models.email import EmailData
