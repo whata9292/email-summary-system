@@ -21,7 +21,8 @@ def initialize_services() -> (
     Initialize and return service instances.
 
     Returns:
-        Tuple containing initialized service instances for Gmail, Claude, Notion, and Slack.
+        Tuple containing initialized service instances
+        for Gmail, Claude, Notion, and Slack.
     """
     if not settings.claude_api_key:
         raise ValueError("CLAUDE_API_KEY is required")
@@ -79,7 +80,8 @@ async def process_emails() -> None:
             notion_page = await notion_service.add_entry(
                 {
                     "title": email["subject"],  # メールの件名をタイトルとして使用
-                    "content": summary,         # Claudeの要約を本文として使用
+                    "content": summary,  # Claudeの要約を本文として使用
+                    "date": email["date"],
                 }
             )
 
