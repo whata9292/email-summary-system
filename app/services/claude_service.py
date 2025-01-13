@@ -41,7 +41,7 @@ class ClaudeService:
 
         message: Message = self.client.messages.create(
             max_tokens=1024,
-            model="claude-3-sonnet-20240229",
+            model="claude-3.5-sonnet-20241022",
             messages=[{"role": "user", "content": prompt}],
         )
 
