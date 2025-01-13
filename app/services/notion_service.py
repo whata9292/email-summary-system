@@ -30,19 +30,42 @@ class NotionService:
         Add a new entry to the Notion database.
 
         Args:
-            data: Entry data containing email_id, subject, sender, date, and summary
+            data: Entry data containing title and content
 
         Returns:
             Created Notion page data
         """
+        # ログにタイトルと要約内容を出力
+        logger.info("Adding new entry to Notion - Title: %s", data["title"])
+        logger.info("Summary content: %s", data["content"])
+
+        # まずページを作成
         page = await self.client.pages.create(
             parent={"database_id": self.database_id},
             properties={
-                "Email ID": {"title": [{"text": {"content": data["email_id"]}}]},
-                "Subject": {"rich_text": [{"text": {"content": data["subject"]}}]},
-                "Sender": {"rich_text": [{"text": {"content": data["sender"]}}]},
-                "Date": {"date": {"start": data["date"]}},
-                "Summary": {"rich_text": [{"text": {"content": data["summary"]}}]},
+                "Name": {"title": [{"text": {"content": data["title"]}}]},
             },
         )
+
+        # ページにコンテンツブロックを追加
+        await self.client.blocks.children.append(
+            block_id=page["id"],
+            children=[
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {"type": "text", "text": {"content": data["content"]}}
+                        ]
+                    },
+                }
+            ],
+        )
+
+        # 成功時のログも出力
+        logger.info(
+            "Successfully added entry to Notion - URL: %s", page.get("url", "N/A")
+        )
+
         return page

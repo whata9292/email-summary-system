@@ -34,14 +34,20 @@ class ClaudeService:
             Generated summary text
         """
         prompt = (
-            "Please provide a concise summary of the following email. "
-            "Focus on key points and action items if any:\n\n"
+            "# 指示\n"
+            "あなたはプロの翻訳者です。以下の英文を完全な形で日本語に翻訳してください。\n\n"
+            "# 重要な注意点\n"
+            "- 文章を省略せず、全文を翻訳すること\n"
+            "- 要約や省略をせず、原文の内容を完全に翻訳すること\n"
+            "- [Note: ...] のような注釈は付けないこと\n"
+            "- 翻訳文のみを出力すること\n\n"
+            "# 原文\n"
             f"{text}"
         )
 
         message: Message = self.client.messages.create(
-            max_tokens=1024,
-            model="claude-3.5-sonnet-20241022",
+            max_tokens=8192,
+            model="claude-3-5-sonnet-20241022",
             messages=[{"role": "user", "content": prompt}],
         )
 
