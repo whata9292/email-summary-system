@@ -2,14 +2,22 @@
 
 import asyncio
 import os
+import sys
 from datetime import datetime
 from typing import Any, Dict
 
 from dotenv import load_dotenv
-from notion_client import AsyncClient
+
+# プロジェクトルートディレクトリをPYTHONPATHに追加
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+sys.path.append(project_root)
 
 # .envファイルの読み込み
 load_dotenv()
+
+from notion_client import AsyncClient  # noqa: E402
 
 
 def check_environment() -> None:
