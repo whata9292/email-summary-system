@@ -2,9 +2,12 @@
 
 import asyncio
 import logging
+from email.utils import parsedate_to_datetime
 from typing import Tuple
 
 from app.config import Settings
+from app.models.converters import email_to_notion_data
+from app.models.email import EmailData
 from app.services.claude_service import ClaudeService
 from app.services.gmail_service import GmailService
 from app.services.notion_service import NotionService
@@ -21,7 +24,8 @@ def initialize_services() -> (
     Initialize and return service instances.
 
     Returns:
-        Tuple containing initialized service instances for Gmail, Claude, Notion, and Slack.
+        Tuple containing initialized service instances
+        for Gmail, Claude, Notion, and Slack.
     """
     if not settings.claude_api_key:
         raise ValueError("CLAUDE_API_KEY is required")
@@ -72,27 +76,33 @@ async def process_emails() -> None:
         logger.info("Processing %d emails", len(emails))
 
         for email in emails:
-            # Generate summary
+            # メール本文のみをClaudeに渡して要約を生成
             summary = await claude_service.generate_summary(email["body"])
 
-            # Store in Notion
-            notion_page = await notion_service.add_entry(
-                {
-                    "email_id": email["id"],
-                    "subject": email["subject"],
-                    "sender": email["sender"],
-                    "date": email["date"],
-                    "summary": summary,
-                }
+            # Gmailの日付文字列をdatetimeに変換
+            received_at = parsedate_to_datetime(email["date"])
+
+            # EmailDataモデルを作成
+            email_data = EmailData(
+                message_id=email["id"],
+                subject=email["subject"],
+                sender=email["sender"],
+                received_at=received_at,
+                content=summary,
             )
+
+            # NotionServiceのデータ形式に変換
+            notion_data = email_to_notion_data(email_data)
+
+            # Notionに保存
+            notion_page = await notion_service.add_entry(notion_data)
 
             # Send Slack notification
             await slack_service.send_notification(
-                f"New email summary created:\n"
-                f"From: {email['sender']}\n"
-                f"Subject: {email['subject']}\n"
-                f"Summary: {summary}\n"
-                f"Notion link: {notion_page['url'] if notion_page else 'N/A'}"
+                f"メール要約が作成されました\n"
+                f"件名: {email_data.subject}\n"
+                f"要約: {email_data.content}\n"
+                f"Notionリンク: {notion_page['url'] if notion_page else 'N/A'}"
             )
 
     except Exception as e:
@@ -128,3 +138,7 @@ def main() -> None:
     except Exception as e:
         logger.error("Application error: %s", str(e))
         raise
+
+
+if __name__ == "__main__":
+    main()
