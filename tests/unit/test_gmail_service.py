@@ -6,6 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 from google.oauth2.credentials import Credentials
 
+from app.config import settings
 from app.services.gmail_service import GmailService
 
 
@@ -195,3 +196,37 @@ class TestGmailService:
         payload = {"body": {"data": "VGVzdCBlbWFpbCBib2R5"}}  # "Test email body"
         body = self.service.parse_email_body(payload)
         assert body == "Test email body"
+
+    @pytest.mark.asyncio
+    async def test_fetch_recent_emails_with_subject_filter(
+        self, mock_gmail_service: Mock
+    ) -> None:
+        """Test that the query includes the subject filter."""
+        messages_mock = mock_gmail_service.users.return_value.messages.return_value
+        messages_mock.list.return_value.execute.return_value = {}
+
+        await self.service.fetch_recent_emails(hours=24)
+
+        # クエリパラメータの検証
+        list_call_kwargs = messages_mock.list.call_args[1]
+        assert "q" in list_call_kwargs
+        assert f'subject:"{settings.email_subject_filter}"' in list_call_kwargs["q"]
+
+    def test_parse_email_with_subject_filter(self) -> None:
+        """Test email parsing with subject filter."""
+        email_data = {
+            "id": "123",
+            "threadId": "thread123",
+            "labelIds": ["INBOX"],
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "The Briefing: Test"},
+                    {"name": "From", "value": "test@example.com"},
+                    {"name": "Date", "value": "2024-01-13"},
+                ],
+                "body": {"data": "VGVzdCBlbWFpbCBib2R5"},  # "Test email body"
+            },
+        }
+
+        parsed_email = self.service.parse_email(email_data)
+        assert parsed_email["subject"] == "The Briefing: Test"

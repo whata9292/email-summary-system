@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     email_lookup_hours: int = 24
     max_emails_to_process: int = 10
     processing_interval_seconds: int = 300  # 5 minutes
+    email_subject_filter: str = os.getenv("EMAIL_SUBJECT_FILTER", "The Briefing")
 
     # Summary settings
     SUMMARY_MAX_LENGTH: int = 500

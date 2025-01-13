@@ -13,6 +13,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib import flow
 from googleapiclient.discovery import Resource, build
 
+from app.config import settings
 from app.utils.error_handler import handle_errors
 
 logger = logging.getLogger(__name__)
@@ -136,8 +137,10 @@ class GmailService:
         """
         try:
             query = (
+                f'subject:"{settings.email_subject_filter}" '
                 f"after:{int((datetime.now() - timedelta(hours=hours)).timestamp())}"
             )
+            logger.info("Using query filter: %s", query)
 
             # Cast to Any to handle dynamic attributes of the Gmail service
             gmail_service = cast(Any, self._service)
