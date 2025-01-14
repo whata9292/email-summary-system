@@ -78,6 +78,10 @@ async def process_emails() -> None:
 
         for email in emails:
             try:
+                logger.info(
+                    "Processing email: %s - Subject: %s", email["id"], email["subject"]
+                )
+
                 # メール本文のみをClaudeに渡して要約を生成
                 summary = await claude_service.generate_summary(email["body"])
 
@@ -99,26 +103,28 @@ async def process_emails() -> None:
                 # Notionに保存
                 notion_page = await notion_service.add_entry(notion_data)
 
-                # Send Slack notification
-                await slack_service.send_notification(
+                # Slack通知を送信
+                notification_text = (
                     f"メール要約が作成されました\n"
                     f"件名: {email_data.subject}\n"
                     f"要約: {email_data.content}\n"
                     f"Notionリンク: {notion_page['url'] if notion_page else 'N/A'}"
                 )
+                await slack_service.send_notification(notification_text)
 
-                # 処理が完了したメールを削除
-                if await gmail_service.delete_email(email["id"]):
-                    logger.info("Successfully deleted processed email: %s", email["id"])
+                # メールを削除
+                logger.info("Attempting to delete email: %s", email["id"])
+                if await gmail_service.archive_email(email["id"]):
+                    logger.info("Successfully deleted email: %s", email["id"])
                 else:
-                    logger.warning("Failed to delete email: %s", email["id"])
+                    logger.warning("Failed to delete email: %s, skipping", email["id"])
 
             except Exception as e:
                 logger.error("Error processing email %s: %s", email["id"], str(e))
-                continue  # Continue with next email even if current one fails
+                continue  # 次のメールの処理に進む
 
     except Exception as e:
-        logger.error("Error processing emails: %s", str(e))
+        logger.error("Error in email processing pipeline: %s", str(e))
         raise
 
 
