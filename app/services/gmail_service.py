@@ -18,7 +18,7 @@ from app.utils.error_handler import handle_errors
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 TOKEN_FILE = os.getenv("GMAIL_TOKEN_FILE", "token.json")
 CREDENTIALS_FILE = os.getenv("GMAIL_CREDENTIALS_FILE", "credentials.json")
 
@@ -37,6 +37,8 @@ class GmailService:
         """
         self.token_path = token_path or TOKEN_FILE
         self.credentials_path = credentials_path or CREDENTIALS_FILE
+        logger.info("Using token path: %s", self.token_path)
+        logger.info("Using credentials path: %s", self.credentials_path)
         self.creds = self._get_credentials()
         self._service: Resource = build("gmail", "v1", credentials=self.creds)
 
@@ -138,7 +140,8 @@ class GmailService:
         try:
             query = (
                 f'subject:"{settings.email_subject_filter}" '
-                f"after:{int((datetime.now() - timedelta(hours=hours)).timestamp())}"
+                f"after:{int((datetime.now() - timedelta(hours=hours)).timestamp())} "
+                f"in:inbox"
             )
             logger.info("Using query filter: %s", query)
 
@@ -174,6 +177,60 @@ class GmailService:
         except Exception as e:
             logger.error("Error fetching emails: %s", str(e))
             raise
+
+    @handle_errors
+    async def archive_email(self, email_id: str) -> bool:
+        """
+        Archive an email by removing INBOX label.
+
+        Args:
+            email_id: The ID of the email to archive
+
+        Returns:
+            bool: True if archiving was successful, False otherwise
+
+        Raises:
+            Exception: If there's an error archiving the email
+        """
+        try:
+            # Cast to Any to handle dynamic attributes of the Gmail service
+            gmail_service = cast(Any, self._service)
+            gmail_service.users().messages().modify(
+                userId="me", id=email_id, body={"removeLabelIds": ["INBOX"]}
+            ).execute()
+
+            logger.info("Successfully archived email: %s", email_id)
+            return True
+
+        except Exception as e:
+            logger.error("Error archiving email %s: %s", email_id, str(e))
+            return False
+
+    @handle_errors
+    async def delete_email(self, email_id: str) -> bool:
+        """
+        Delete an email from Gmail.
+
+        Args:
+            email_id: The ID of the email to delete
+
+        Returns:
+            bool: True if deletion was successful, False otherwise
+
+        Raises:
+            Exception: If there's an error deleting the email
+        """
+        try:
+            # Cast to Any to handle dynamic attributes of the Gmail service
+            gmail_service = cast(Any, self._service)
+            gmail_service.users().messages().delete(userId="me", id=email_id).execute()
+
+            logger.info("Successfully deleted email: %s", email_id)
+            return True
+
+        except Exception as e:
+            logger.error("Error deleting email %s: %s", email_id, str(e))
+            return False
 
     def parse_email(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """

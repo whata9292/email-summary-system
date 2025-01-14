@@ -54,6 +54,7 @@ async def process_emails() -> None:
     2. Generate summaries using Claude
     3. Store in Notion
     4. Send notifications to Slack
+    5. Delete processed emails
     """
     try:
         (
@@ -76,37 +77,54 @@ async def process_emails() -> None:
         logger.info("Processing %d emails", len(emails))
 
         for email in emails:
-            # メール本文のみをClaudeに渡して要約を生成
-            summary = await claude_service.generate_summary(email["body"])
+            try:
+                logger.info(
+                    "Processing email: %s - Subject: %s", email["id"], email["subject"]
+                )
 
-            # Gmailの日付文字列をdatetimeに変換
-            received_at = parsedate_to_datetime(email["date"])
+                # メール本文のみをClaudeに渡して要約を生成
+                summary = await claude_service.generate_summary(email["body"])
 
-            # EmailDataモデルを作成
-            email_data = EmailData(
-                message_id=email["id"],
-                subject=email["subject"],
-                sender=email["sender"],
-                received_at=received_at,
-                content=summary,
-            )
+                # Gmailの日付文字列をdatetimeに変換
+                received_at = parsedate_to_datetime(email["date"])
 
-            # NotionServiceのデータ形式に変換
-            notion_data = email_to_notion_data(email_data)
+                # EmailDataモデルを作成
+                email_data = EmailData(
+                    message_id=email["id"],
+                    subject=email["subject"],
+                    sender=email["sender"],
+                    received_at=received_at,
+                    content=summary,
+                )
 
-            # Notionに保存
-            notion_page = await notion_service.add_entry(notion_data)
+                # NotionServiceのデータ形式に変換
+                notion_data = email_to_notion_data(email_data)
 
-            # Send Slack notification
-            await slack_service.send_notification(
-                f"メール要約が作成されました\n"
-                f"件名: {email_data.subject}\n"
-                f"要約: {email_data.content}\n"
-                f"Notionリンク: {notion_page['url'] if notion_page else 'N/A'}"
-            )
+                # Notionに保存
+                notion_page = await notion_service.add_entry(notion_data)
+
+                # Slack通知を送信
+                notification_text = (
+                    f"メール要約が作成されました\n"
+                    f"件名: {email_data.subject}\n"
+                    f"要約: {email_data.content}\n"
+                    f"Notionリンク: {notion_page['url'] if notion_page else 'N/A'}"
+                )
+                await slack_service.send_notification(notification_text)
+
+                # メールを削除
+                logger.info("Attempting to archive email: %s", email["id"])
+                if await gmail_service.archive_email(email["id"]):
+                    logger.info("Successfully archived email: %s", email["id"])
+                else:
+                    logger.warning("Failed to archive email: %s, skipping", email["id"])
+
+            except Exception as e:
+                logger.error("Error processing email %s: %s", email["id"], str(e))
+                continue  # 次のメールの処理に進む
 
     except Exception as e:
-        logger.error("Error processing emails: %s", str(e))
+        logger.error("Error in email processing pipeline: %s", str(e))
         raise
 
 
