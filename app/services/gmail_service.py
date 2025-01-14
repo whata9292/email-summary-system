@@ -175,6 +175,32 @@ class GmailService:
             logger.error("Error fetching emails: %s", str(e))
             raise
 
+    @handle_errors
+    async def delete_email(self, email_id: str) -> bool:
+        """
+        Delete an email from Gmail.
+
+        Args:
+            email_id: The ID of the email to delete
+
+        Returns:
+            bool: True if deletion was successful, False otherwise
+
+        Raises:
+            Exception: If there's an error deleting the email
+        """
+        try:
+            # Cast to Any to handle dynamic attributes of the Gmail service
+            gmail_service = cast(Any, self._service)
+            gmail_service.users().messages().delete(userId="me", id=email_id).execute()
+
+            logger.info("Successfully deleted email: %s", email_id)
+            return True
+
+        except Exception as e:
+            logger.error("Error deleting email %s: %s", email_id, str(e))
+            return False
+
     def parse_email(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Parse raw email data into structured format.
