@@ -113,11 +113,11 @@ async def process_emails() -> None:
                 await slack_service.send_notification(notification_text)
 
                 # メールを削除
-                logger.info("Attempting to delete email: %s", email["id"])
+                logger.info("Attempting to archive email: %s", email["id"])
                 if await gmail_service.archive_email(email["id"]):
-                    logger.info("Successfully deleted email: %s", email["id"])
+                    logger.info("Successfully archived email: %s", email["id"])
                 else:
-                    logger.warning("Failed to delete email: %s, skipping", email["id"])
+                    logger.warning("Failed to archive email: %s, skipping", email["id"])
 
             except Exception as e:
                 logger.error("Error processing email %s: %s", email["id"], str(e))
